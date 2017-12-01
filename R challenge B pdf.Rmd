@@ -1,0 +1,10 @@
+---
+title: "R challenge B"
+output: pdf_document
+---
+
+```{r}
+x=4+3
+x
+```
+
