@@ -3,8 +3,228 @@ title: "R challenge B"
 output: pdf_document
 ---
 
-```{r}
-x=4+3
-x
+github link: https://github.com/WardPlessers/R-programming-Challenge-2
+
+Task 1B - Predicting house prices in Ames, Iowa
+
+
+Step 1
+
+For this task we're going to choose the ML technique: random forest. This technique works with decision trees. 
+Normal decision trees work like this: you have one big tree, and you do an iteration in order to make the best dececion tree possible. Your variables are the amount of branches the tree has. In the first iteration the tree will look at all the variables, and decide wich variable it should use to predict the target variable as well as possible. It will take the best variable and this will be the first branch. For the next iteration it will do the same with the remaining variables, untill all variables are in the tree. After this you will have one decision tree to predict target variables. 
+Now we are going to use a random forest, this means we're also gonna work with trees, but in a quite different way. We will have more than one tree. We choose the amount of trees at the start of our process. Every tree we have, will just take a number of random variables and decide wich one of these is the best, using a sample of the training data (just like the old decision tree, only now the tree choses from a smaller number of variables). The tree will do this a couple of times untill it has enough branches (chosen by the user) So when a testset goes trough the random forest, all the trees will decide on one possible value for the target value. The average of this value will be the answer of the forest. 
+
+Step 2
+```{r,warning=FALSE}
+data<-read.csv("train.csv",header=TRUE) #we read the data into R
+#we want the data without the forst column of identities
+training<-data[,c(2:81)]
+#we are going to use the econometrics technique: random forest 
+#we are going to eliminate the NA values, we are going to start with eliminating the variables with 
+#a very high number of NA values
+summary(training) #we are going to eliminate variables with a lot of NA values, lets take 150 or 
+#more. We will eliminate: LotFrontage(c3) , Alley(c6), FireplaceQu(c57),PoolQC(c72), Fence(c73) and
+#MiscFeature(c74)
+training<-training[,c(-3,-6,-57,-72,-73,-74)]
+#we still have some NA values, we are going to erase all the observations with an NA value
+training<-na.omit(training)#now our training set has no more NA values
+#we also have to convert al character variables to factor variables, but there are none
+
+install.packages("randomForest",repos="https://github.com/WardPlessers/R-programming-Challenge-2") 
+#we're #going to install the package, randomforest
+library(randomForest)
+
+pricemodel<-randomForest(SalePrice~.,data=training, ntree= 400, nodesize=6) #we make our model, we 
+#will take the number of trees as 400 and the amont of branches as 6
 ```
+
+Step 3
+```{r,warning=FALSE} 
+data2<-read.csv("test.csv")
+#we want the data without the forst column of identities
+testset<-data[,c(2:81)]
+testset<-testset[,c(-3,-6,-57,-72,-73,-74)]#we want the testset to have the same variables as the
+#training set 
+testset<-na.omit(testset) #we dont want observations with NA values
+#we also have to convert al character variables to factor variables, but there are none
+
+p<-predict(pricemodel,testset)
+sumerrorforest<-sum((p-testset$SalePrice)^2)#we're gonna look for the sum squared error between the
+#predicted value by the model, and the actual value of the test set
+meansqerrorforest<-sqrt(sumerrorforest/length(testset$SalePrice)) #this is the MSE of the predicions 
+#and the real value
+
+
+#now we're gonna use a normal lineair regression model and afterwards compare the two methods 
+lm1<-lm(SalePrice~.,data=training)
+
+p2<-predict(lm1,testset)
+
+sumerrorlm<-sum((testset$SalePrice-p2)^2)
+meansqerrorlm<-sqrt(sumerrorlm/length(testset$SalePrice)) #this is again the MSE of the predicted 
+#values and the real value
+
+#now to compare the two models
+diff<-meansqerrorforest-meansqerrorlm
+diff #This number is negative, this means that the error in the lineair model is a bigger than the one
+#from the random forest model, thus we can conclude that the random forest model gives a better
+#predicition.
+```
+
+
+Task 2B - Overfitting in Machine Learning
+
+Step 1
+```{r,warning=FALSE}
+#creating the data for this excercise: 
+set.seed(1200)
+ns <- 150 
+e <- rnorm(n=ns , mean = 0, sd = 1) 
+x <- rnorm(n=ns, mean = 0, sd = 1) 
+y <- x^3+e
+df <- data.frame(y,x)
+
+trainingset=df[1:120,]
+testset=df[121:150,] #we take 120 observations as traing set, and 30 as testset
+
+install.packages("np",repos="https://github.com/WardPlessers/R-programming-Challenge-2") #we install 
+#np #to make use of the function npreg
+library(tidyverse) #we load tidyverse in order to use ggplot
+library(np) 
+
+ll.fit.lowflex=npreg(trainingset, formula = y ~ x, method = "ll", bws = 0.5) #making the ll.fit.lowflex
+#model
+```
+
+Step 2
+```{r,warning=FALSE}
+ll.fit.highflex=npreg(trainingset, formula = y ~ x, method = "ll", bws=0.01) #making the #ll.fit.highflex
+#model
+```
+
+Step 3
+```{r,warning=FALSE}
+ggplot(data = trainingset) + geom_point(aes(x = x, y = y)) + 
+  geom_line(aes(x = x, y = ll.fit.lowflex$mean, color = "blue")) + 
+  geom_line(aes(x = x, y = ll.fit.highflex$mean, color = "red")) #we plot the traing data, the
+#overfitting and the underfitting #model 
+```
+
+Step 4
+
+The highflexmodel is an example of overfitting, you make your model really specific for your prediction of the training data. When you use it on other data to test your model the performance will not be that great because you're predictions will use a lot of coincidences of the training data. 
+The lowflex model is an example of underfitting. You don't make your predicitions specific enough. Bacause of this, when you use your model on the test data, the results will not be that good. 
+The highflex model is more variable than the lowflex model.(as the highflex model is a lot more specific and takes all the variations in acoount, while the lowflex model doesn't variate that much) The bias of the highflex model is also lower than the bias of the lowflex model. (bias indicates the variance of the model itself, so how much the model fluctuates around its mean)
+
+Step 5
+```{r,warning=FALSE}
+ggplot(data = testset) + geom_point(aes(x = x, y = y)) + 
+  geom_line(aes(x = x, y = predict(ll.fit.lowflex, newdata=testset), color = "blue")) +
+  geom_line(aes(x = x, y = predict(ll.fit.highflex, newdata=testset), color = "red")) 
+#the predictions of the highflex model are a lot more variable than the ones of the low flex model
+#the bias of the least biased model (highflex model) has now become a lot higer than the bias of the
+#lowflex model. 
+```
+
+Step 6
+```{r,warning=FALSE}
+bandwidth=c(seq(0.01,0.5,0.001))
+```
+
+Step 7
+```{r,warning=FALSE}
+linearmodelsTrain=list(rep(0, length(bandwidth)))
+for(i in 1:length(bandwidth)){
+  linearmodelsTrain[[i]]=npreg(trainingset, formula = y ~ x, method="ll", bws=bandwidth[i])
+}
+```
+
+Step 8
+```{r,warning=FALSE}
+MSETrain=c(rep(0,length(bandwidth)))
+for(i in 1:length(bandwidth)){
+  MSETrain[i]=linearmodelsTrain[[i]]$MSE
+}
+```
+
+Step 9
+```{r,warning=FALSE}
+MSETest <- c(rep(0,length(bandwidth)))
+for(i in 1:length(bandwidth)){
+  MSETest[i] <- mean((testset[,1] - predict(linearmodelsTrain[[i]], newdata = testset))^2) 
+}
+```
+ Step 10 
+
+```{r,warning=FALSE}
+MSEdata<-data.frame(MSETrain,MSETest,bandwidth)
+ggplot(data=MSEdata) + 
+  geom_line(mapping=aes(x=bandwidth, y=MSETrain, color="blue")) + 
+  geom_smooth(mapping=aes(x=bandwidth, y=MSETest, color="red"))
+#as expected, when we have a higher bandwidth, the MSE on the training data will become bigger and
+#bigger. This is because you will have more and more underfitting and your model will be less 
+#precise. On the test tdata on the other hand we can observe antoher phenomenon. As we increase the
+#bandwidth, the mse of the test data will first deccrease and afterwards increase. The decrease is
+#because you have #less and les overfitting, the increase is when you have more and more underfitting.
+#Thus in the minimum of this function you will have your optimal bandwidth to have the best possible
+#model. 
+```
+
+
+Task 3B - Privacy regulation compliance in France
+
+Step 1
+```{r,warning=FALSE}
+CNIL <- read.csv("OpenCNIL_Organismes_avec_CIL_VD_20171204.csv", header=TRUE, sep = ";") #we read 
+#the data from the CNIL file
+```
+
+Step 2
+```{r,warning=FALSE}
+CNIL$Department <- as.factor(substr(CNIL$Code_Postal, start = 1,stop = 2)) #we take the first 2 
+#numbers of the number because we know these indicate in wich department they are situated
+CNIL_Siren_and_Department <- CNIL %>% count(Department,Siren) #we make a table of all the 
+#departments and their SIREN number
+names(CNIL_Siren_and_Department) <- c("Department", "Siren", "Deleguates") #we give a name to the
+#columns
+CNIL_dep <- CNIL_Siren_and_Department %>% count(Department) #we make a table with the number of the
+#department, and the amount of deleguates in this department
+names(CNIL_dep) <- c("Department", "Deleguates") #we give the columns fitting names
+CNIL_dep
+```
+
+Step 3
+```{r,warning=FALSE}
+#when the data is large, but managable, we use packages in R that make sure we don't have to store 
+#all the data in the memory all the time. Therefore we use the package datatable with its function 
+#fread
+install.packages("data.table",repos="https://github.com/WardPlessers/R-programming-Challenge-2")
+library(data.table)
+
+#we make sure the data we need is stored in our local directory 
+#because the data is that big, we're only going to load a part of the variables, more specific 
+#EFENCENT (which indicates the size of the company (amount of employees)) and SIREN (because it's a
+#common variable we use to merge the two tables) 
+system.time(fread("sirc-17804_9075_14209_201710_L_M_20171101_030132835.csv",
+                  header = TRUE, sep=";",select = c("SIREN","EFENCENT"),na.omit))
+bigdata <- fread("sirc-17804_9075_14209_201710_L_M_20171101_030132835.csv",
+                 header = TRUE, sep=";",select = c("SIREN","EFENCENT"),na.omit)
+
+bigdata$SIREN<-as.integer(bigdata$SIREN) #we have to make sure both Siren columns are of the same
+#variable type. Therefore we convert the SIREN column of bigdata into an integer column
+
+install.packages("dplyr",repos="https://github.com/WardPlessers/R-programming-Challenge-2")
+library(dplyr)
+datamerged<-right_join(bigdata,CNIL,by=c("SIREN"="Siren"))
+```
+
+Step 4
+```{r,warning=FALSE}
+datamerged$EFENCENT<-as.integer(datamerged$EFENCENT)
+ggplot(datamerged) + geom_histogram(aes(EFENCENT))
+```
+
+
+
+
 
